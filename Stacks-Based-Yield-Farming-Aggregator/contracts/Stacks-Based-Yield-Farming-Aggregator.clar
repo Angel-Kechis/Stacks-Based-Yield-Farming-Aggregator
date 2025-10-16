@@ -76,3 +76,76 @@
   last-updated: uint,
   source: (string-ascii 32)
 })
+
+;; Farming pool data
+(define-map farming-pools {protocol: principal, pool-id: uint} {
+  input-token: principal, ;; Token to deposit
+  reward-token: principal, ;; Token received as reward
+  total-staked: uint, ;; Total tokens staked in this pool
+  current-apr: uint, ;; Current APR in basis points
+  max-capacity: uint, ;; Max capacity of this pool
+  active: bool,
+  compounded: bool, ;; Whether rewards auto-compound
+  last-harvest-block: uint,
+  last-rebalance-block: uint,
+  historical-apr: (list 30 uint), ;; Last 30 days APR in basis points
+  impermanent-loss-factor: uint, ;; IL factor if applicable (0 for single-asset)
+  address: principal ;; Contract address
+})
+
+;; User positions
+(define-map user-positions {user: principal, strategy-id: uint} {
+  principal-amount: uint, ;; Original deposit amount
+  share-amount: uint, ;; Shares in the strategy
+  entry-price: uint, ;; Entry price for perf calculation
+  deposit-block: uint, ;; Block when deposited
+  last-harvest-block: uint, ;; Last block when user harvested
+  claimed-rewards: uint, ;; Total rewards claimed
+  unclaimed-rewards: uint ;; Pending rewards
+})
+
+;; User totals across all strategies
+(define-map user-totals principal {
+  total-value-locked: uint,
+  total-earnings: uint,
+  strategies-count: uint,
+  compound-preference: bool ;; Whether user prefers auto-compounding
+})
+
+;; Strategy definitions
+(define-map strategies uint {
+  name: (string-ascii 64),
+  description: (string-ascii 256),
+  input-token: principal,
+  active: bool,
+  risk-level: (string-ascii 16), ;; "low", "medium", "high"
+  allocation-map: (list 10 {protocol: principal, pool-id: uint, allocation: uint}), ;; Protocol and allocation in percentage
+  total-allocation: uint, ;; Must sum to 10000 (100%)
+  total-apy: uint, ;; Combined APY in basis points
+  total-staked: uint, ;; Total amount staked in this strategy
+  share-price: uint, ;; Current price per share
+  share-token: principal, ;; Token representing shares
+  auto-compound: bool, ;; Whether strategy auto-compounds
+  last-rebalance-block: uint,
+  creation-block: uint,
+  performance-history: (list 30 {block: uint, apy: uint}) ;; Historical performance
+})
+
+;; Strategy counter
+(define-data-var next-strategy-id uint u1)
+
+;; Harvested rewards tracking
+(define-map harvested-rewards {protocol: principal, pool-id: uint} {
+  last-amount: uint,
+  total-amount: uint,
+  last-harvest-block: uint
+})
+
+;; Protocol revenue tracking
+(define-map protocol-revenue {
+  token: principal
+} {
+  performance-fees: uint,
+  withdrawal-fees: uint,
+  total-fees: uint
+})
