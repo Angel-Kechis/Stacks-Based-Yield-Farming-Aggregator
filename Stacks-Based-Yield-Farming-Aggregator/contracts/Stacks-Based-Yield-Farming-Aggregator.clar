@@ -149,3 +149,49 @@
   withdrawal-fees: uint,
   total-fees: uint
 })
+
+;; Historical APY data for each protocol
+(define-map protocol-apy-history {protocol: principal, day: uint} uint)
+
+;; User activity log
+(define-map user-activity {user: principal, activity-id: uint} {
+  activity-type: (string-ascii 16), ;; "deposit", "withdraw", "harvest", "claim"
+  strategy-id: uint,
+  amount: uint,
+  block-height: uint,
+  success: bool
+})
+
+;; User activity counter
+(define-map user-activity-count principal uint)
+
+;; === Protocol Management Functions ===
+
+;; Pause/unpause protocol
+(define-public (set-protocol-paused (paused bool))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (ok (var-set protocol-paused paused))))
+
+;; Set fee parameters
+(define-public (set-performance-fee (fee-bps uint))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (asserts! (<= fee-bps u2000) ERR_INVALID_AMOUNT) ;; Max 20% fee
+    (ok (var-set performance-fee-bps fee-bps))))
+
+(define-public (set-withdrawal-fee (fee-bps uint))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (asserts! (<= fee-bps u500) ERR_INVALID_AMOUNT) ;; Max 5% fee
+    (ok (var-set withdrawal-fee-bps fee-bps))))
+
+;; Set fee allocations
+(define-public (set-fee-allocations (treasury uint) (staking uint) (insurance uint))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (asserts! (is-eq (+ (+ treasury staking) insurance) u10000) ERR_INVALID_AMOUNT)
+    (var-set treasury-allocation treasury)
+    (var-set staking-allocation staking)
+    (var-set insurance-allocation insurance)
+    (ok true)))
