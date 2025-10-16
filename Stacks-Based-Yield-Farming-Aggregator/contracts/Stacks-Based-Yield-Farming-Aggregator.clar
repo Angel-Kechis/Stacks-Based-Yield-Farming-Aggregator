@@ -195,3 +195,74 @@
     (var-set staking-allocation staking)
     (var-set insurance-allocation insurance)
     (ok true)))
+
+;; Set treasury and insurance fund addresses
+(define-public (set-treasury-address (address principal))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (ok (var-set treasury-address address))))
+
+(define-public (set-insurance-fund-address (address principal))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (ok (var-set insurance-fund-address address))))
+
+
+;; Add or update supported protocol
+(define-public (add-supported-protocol 
+                (protocol-address principal) 
+                (name (string-ascii 64))
+                (tvl-cap uint)
+                (risk-score uint)
+                (audited bool)
+                (protocol-type (string-ascii 32)))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (asserts! (<= risk-score u100) ERR_INVALID_AMOUNT)
+    
+    (ok (map-set supported-protocols protocol-address {
+      name: name,
+      active: true,
+      tvl-cap: tvl-cap,
+      risk-score: risk-score,
+      audited: audited,
+      last-harvest-block: u0,
+      last-apr: u0,
+      protocol-type: protocol-type
+    }))))
+
+;; Update protocol status
+(define-public (update-protocol-status (protocol-address principal) (active bool))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (let ((protocol (unwrap! (map-get? supported-protocols protocol-address) ERR_INVALID_PROTOCOL)))
+      (ok (map-set supported-protocols protocol-address (merge protocol {active: active}))))))
+
+;; Add or update farming pool
+(define-public (add-farming-pool 
+                (protocol-address principal) 
+                (pool-id uint)
+                (input-token principal)
+                (reward-token principal)
+                (max-capacity uint)
+                (compounded bool)
+                (impermanent-loss-factor uint)
+                (pool-address principal))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (asserts! (not (is-none (map-get? supported-protocols protocol-address))) ERR_INVALID_PROTOCOL)
+    
+    (ok (map-set farming-pools {protocol: protocol-address, pool-id: pool-id} {
+      input-token: input-token,
+      reward-token: reward-token,
+      total-staked: u0,
+      current-apr: u0,
+      max-capacity: max-capacity,
+      active: true,
+      compounded: compounded,
+      last-harvest-block: u0,
+      last-rebalance-block: u0,
+      historical-apr: (list),
+      impermanent-loss-factor: impermanent-loss-factor,
+      address: pool-address
+    }))))
